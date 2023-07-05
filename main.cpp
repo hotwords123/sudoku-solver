@@ -9,10 +9,17 @@ int main() {
     }
 
     SudokuSolver solver(sudoku.data());
-    auto solutions = solver.solve(10);
-    for (auto &solution : solutions) {
-        solution.print();
-        std::cout << '\n';
+    bool ok = true;
+    while (ok) {
+        ok = false;
+        while (solver.reduceOne()) {
+            ok = true;
+        }
+        if (solver.reduceGroup()) {
+            ok = true;
+        }
+        solver.solutionGrid().print();
+        std::cout << "\n";
     }
 
     return 0;

@@ -78,3 +78,23 @@ void DancingLink::uncover(int col) {
 
     col_heads[col]->restoreTo(&Node::h);
 }
+
+void DancingLink::coverRow(node_ptr row) {
+    for (Node *cell : cells(row)) {
+        cell->removeFrom(&Node::v);
+        col_sizes[cell->col]--;
+    }
+
+    row->removeFrom(&Node::v);
+    col_sizes[row->col]--;
+}
+
+void DancingLink::uncoverRow(node_ptr row) {
+    col_sizes[row->col]++;
+    row->restoreTo(&Node::v);
+
+    for (Node *cell : cells<kBackward>(row)) {
+        col_sizes[cell->col]++;
+        cell->restoreTo(&Node::v);
+    }
+}

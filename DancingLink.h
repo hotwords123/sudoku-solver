@@ -21,7 +21,9 @@ class DancingLink {
             explicit AxisIterator(Node *node) : node(node) {}
 
             Node *operator*() const { return node; }
+            Node *operator->() const { return node; }
             AxisIterator &operator++() { node = node->*axis.*dir; return *this; }
+            bool operator==(const AxisIterator &other) const { return node == other.node; }
             bool operator!=(const AxisIterator &other) const { return node != other.node; }
 
         private:
@@ -135,6 +137,18 @@ public:
      * @param col the column to uncover
      */
     void uncover(int col);
+
+    /**
+     * Marks the given row as covered, removing all related cells.
+     * @param row the row to cover
+     */
+    void coverRow(node_ptr row);
+
+    /**
+     * Unmarks the given row as covered, restoring all related cells.
+     * @param row the row to uncover
+     */
+    void uncoverRow(node_ptr row);
 
     /**
      * Returns the number of rows in the given column.

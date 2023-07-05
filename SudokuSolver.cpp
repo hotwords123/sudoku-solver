@@ -85,3 +85,185 @@ bool SudokuSolver::search() {
     dlx.uncover(min_col);
     return false;
 }
+
+static std::string formatCell(int pos) {
+    int row = pos / 9 + 1;
+    int col = pos % 9 + 1;
+    return "(" + std::to_string(row) + ", " + std::to_string(col) + ")";
+}
+
+bool SudokuSolver::reduceOne() {
+    for (auto col : dlx.columns()) {
+        int col_index = col->columnIndex();
+
+        // if a column has only one row, we can make a decision
+        if (dlx.columnSize(col_index) == 1) {
+            dlx.cover(col_index);
+
+            // add the decision to the solution
+            auto row = *dlx.rows(col_index).begin();
+            auto [pos, value] = decisions[row->rowIndex()];
+            solution.cells[pos] = value;
+            std::cout << "reduceOne: cell " << formatCell(pos) << " is " << value << "\n";
+
+            for (auto cell : dlx.cells(row)) {
+                dlx.cover(cell->columnIndex());
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool SudokuSolver::reduceGroup() {
+    using uint = unsigned int;
+
+    auto columns = dlx.columns();
+    auto iter = columns.begin();
+    // skip all cell constraints
+    while (iter != columns.end() && iter->columnIndex() < 9 * 9) ++iter;
+
+    std::vector<int> cells; // the cells in the constraint
+    std::vector<uint> masks(9); // the masks of the cells
+
+    /**
+     * Returns the index of a cell in the constraint.
+     * @param col_index the column index of the cell
+     * @return the index of the cell
+     */
+    auto getIndex = [&](int col_index) -> int {
+        auto iter = std::find(cells.begin(), cells.end(), col_index);
+        int index = iter - cells.begin();
+        if (iter == cells.end()) cells.push_back(col_index);
+        return index;
+    };
+
+    std::vector<int> group; // the rows in the group
+
+    std::vector<DancingLink::node_ptr> unused_rows;
+    bool ok = false; // whether at least one row is covered
+
+    /**
+     * Covers all unused rows.
+     * Sets `ok` to true if at least one row is covered.
+     */
+    auto coverRows = [&]() {
+        if (unused_rows.empty()) return;
+
+        for (auto row : unused_rows) {
+            auto [pos, value] = decisions[row->rowIndex()];
+            std::cout << " * cell " << formatCell(pos) << " is not " << value << "\n";
+            dlx.coverRow(row);
+        }
+
+        ok = true;
+    };
+
+    for (int i = 9; i < 4 * 9; i++) {
+        cells.clear();
+        std::fill(masks.begin(), masks.end(), 0);
+
+        uint number_mask = 0; // numbers that appear in the constraint
+
+        // enumerate all columns in the constraint
+        for (; iter != columns.end() && iter->columnIndex() < 9 * (i + 1); ++iter) {
+            int number = iter->columnIndex() % 9;
+            number_mask |= 1u << number;
+
+            // find all related cells and put them into the mask
+            for (auto row : dlx.rows(iter->columnIndex())) {
+                for (auto cell : dlx.cells(row)) {
+                    int col_index = cell->columnIndex();
+                    if (col_index < 9 * 9) {
+                        masks[number] |= 1u << getIndex(col_index);
+                    }
+                }
+            }
+        }
+
+        // enumerate all subsets of the constraint
+        for (uint set = number_mask; set != 0; --set &= number_mask) {
+            // find all covered cells
+            uint covered = 0;
+            for (int number = 0; number < 9; number++) {
+                if (set >> number & 1u) {
+                    covered |= masks[number];
+                }
+            }
+
+            int set_size = std::popcount(set);
+            int covered_count = std::popcount(covered);
+            // if #covered == #subset, we can group the rows
+            if (set_size != covered_count) continue;
+
+            std::cout << "reduceGroup: found a group of " << set_size << " cells\n";
+
+            // Reduction 1.
+            // If a group of numbers appears only in a equal number of cells, then
+            // these cells cannot contain any other numbers.
+
+            unused_rows.clear();
+            for (int index = 0; index < (int)cells.size(); index++) {
+                if (covered >> index & 1u) {
+                    for (auto row : dlx.rows(cells[index])) {
+                        auto [pos, value] = decisions[row->rowIndex()];
+                        if (!(set >> (value - 1) & 1u)) {
+                            // if the row is not in the group, we can cover it
+                            unused_rows.push_back(row);
+                        }
+                    }
+                }
+            }
+            coverRows();
+
+            // Reduction 2.
+            // If a number appears only in a group of cells, then these cells
+            // must contain the number.
+
+            for (int number = 0; number < 9; number++) {
+                if (set >> number & 1u) {
+                    std::cout << " - number " << (number + 1) << ":";
+
+                    // find all rows that contain the number
+                    group.clear();
+                    for (auto row : dlx.rows(9 * i + number)) {
+                        auto [pos, value] = decisions[row->rowIndex()];
+                        std::cout << " " << formatCell(pos);
+                        group.push_back(row->rowIndex());
+                    }
+                    std::cout << "\n";
+
+                    // enumerate all columns
+                    // if a column contains all rows in the group, we can cover all other rows
+                    for (auto col : columns) {
+                        auto rows = dlx.rows(col->columnIndex());
+
+                        [&]() {
+                            unused_rows.clear();
+
+                            auto iter = rows.begin();
+                            for (int row_index : group) {
+                                while (iter != rows.end() && iter->rowIndex() < row_index) {
+                                    unused_rows.push_back(*iter);
+                                    ++iter;
+                                }
+                                if (iter == rows.end() || iter->rowIndex() != row_index) return;
+                                ++iter;
+                            }
+                            while (iter != rows.end()) {
+                                unused_rows.push_back(*iter);
+                                ++iter;
+                            }
+
+                            coverRows();
+                        }();
+                    }
+                }
+            }
+        }
+    }
+
+    return ok;
+}
