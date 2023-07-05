@@ -6,7 +6,7 @@
 void Sudoku::Grid::print() const {
     for (int i = 0; i < 9; i++) {
         for (int j = 0; j < 9; j++) {
-            std::cout << cells[i * 9 + j] << ' ';
+            std::cout << " 123456789"[cells[i * 9 + j]] << ' ';
             if (j == 2 || j == 5) std::cout << "| ";
         }
         std::cout << '\n';
