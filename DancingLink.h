@@ -133,6 +133,7 @@ public:
 
     /**
      * Unmarks the given column as covered, restoring all related rows.
+     * This operation must be performed in the reverse order of `cover`.
      * @param col the column to uncover
      */
     void uncover(int col);
@@ -145,6 +146,7 @@ public:
 
     /**
      * Unmarks the given row as removed, restoring all related cells.
+     * This operation must be performed in the reverse order of `removeRow`.
      * @param row the row to restore
      */
     void restoreRow(node_ptr row);

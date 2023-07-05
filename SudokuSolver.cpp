@@ -60,6 +60,8 @@ bool SudokuSolver::search() {
     // otherwise, cover the column and try all possible rows
     dlx.cover(min_col);
 
+    bool done = false;
+
     for (auto row : dlx.rows(min_col)) {
         // add the decision to the solution
         auto [pos, value] = decisions[row->rowIndex()];
@@ -71,7 +73,7 @@ bool SudokuSolver::search() {
         }
 
         // search for the next decision
-        if (search()) return true;
+        done = search();
 
         // backtrack and uncover the columns in reversed order
         for (auto cell : dlx.cells<DancingLink::kBackward>(row)) {
@@ -79,11 +81,13 @@ bool SudokuSolver::search() {
         }
 
         solution.cells[pos] = 0;
+
+        if (done) break;
     }
 
     // backtrack
     dlx.uncover(min_col);
-    return false;
+    return done;
 }
 
 static std::string formatCell(int pos) {
