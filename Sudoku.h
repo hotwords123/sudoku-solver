@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <string>
 
@@ -17,19 +19,14 @@ public:
         void print() const;
     };
 
+    const Grid &data() const { return grid; }
+
     /**
      * Reads a Sudoku puzzle from the given file.
      * @param filename the name of the file to read from
      * @return true if the file is read successfully, false otherwise
      */
     bool readFromFile(const std::string &filename);
-
-    /**
-     * Solves the Sudoku puzzle.
-     * @param limit the maximum number of solutions to find
-     * @return the solutions found
-     */
-    std::vector<Grid> solve(int limit = 1);
 
 private:
     Grid grid;
