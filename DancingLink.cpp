@@ -1,4 +1,5 @@
 #include "DancingLink.h"
+#include <iostream>
 
 using node_ptr = DancingLink::node_ptr;
 
@@ -26,33 +27,38 @@ void DancingLink::build(int n_cols) {
     col_sizes.assign(n_cols, 0);
 }
 
-node_ptr DancingLink::addNode(node_ptr where, int col) {
+void DancingLink::addNode(int col, bool new_row) {
     Node *node;
-    if (where == nullptr) {
-        node = new Node(n_rows++, col);
+    if (new_row) {
+        node = new Node(row_heads.size(), col);
         node->init(&Node::h);
+        row_heads.push_back(node);
     } else {
-        node = new Node(where->row, col);
-        node->insertTo(&Node::h, where);
+        Node *head = row_heads.back();
+        node = new Node(head->row, col);
+        node->insertTo(&Node::h, head);
     }
 
     node->insertTo(&Node::v, col_heads[col]);
     col_sizes[col]++;
-    return node;
 }
 
 void DancingLink::destroy() {
-    for (Node *head : col_heads) {
-        for (Node *node = head->v.next; node != head; ) {
-            Node *next = node->v.next;
+    for (Node *head : row_heads) {
+        for (Node *node = head->h.next; node != head; ) {
+            Node *next = node->h.next;
             delete node;
             node = next;
         }
         delete head;
     }
 
-    n_rows = 0;
+    for (Node *head : col_heads) {
+        delete head;
+    }
+
     pivot->init(&Node::h);
+    row_heads.clear();
     col_heads.clear();
     col_sizes.clear();
 }
@@ -79,7 +85,7 @@ void DancingLink::uncover(int col) {
     col_heads[col]->restoreTo(&Node::h);
 }
 
-void DancingLink::coverRow(node_ptr row) {
+void DancingLink::removeRow(node_ptr row) {
     for (Node *cell : cells(row)) {
         cell->removeFrom(&Node::v);
         col_sizes[cell->col]--;
@@ -89,7 +95,7 @@ void DancingLink::coverRow(node_ptr row) {
     col_sizes[row->col]--;
 }
 
-void DancingLink::uncoverRow(node_ptr row) {
+void DancingLink::restoreRow(node_ptr row) {
     col_sizes[row->col]++;
     row->restoreTo(&Node::v);
 

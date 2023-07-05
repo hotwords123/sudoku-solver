@@ -118,11 +118,10 @@ public:
 
     /**
      * Adds a node to the given row.
-     * @param where the node that marks the row
      * @param col the column of the new node
-     * @return the new node
+     * @param new_row whether to create a new row
      */
-    node_ptr addNode(node_ptr where, int col);
+    void addNode(int col, bool new_row = false);
 
     void destroy();
 
@@ -139,16 +138,16 @@ public:
     void uncover(int col);
 
     /**
-     * Marks the given row as covered, removing all related cells.
-     * @param row the row to cover
+     * Marks the given row as removed, removing all related cells.
+     * @param row the row to remove
      */
-    void coverRow(node_ptr row);
+    void removeRow(node_ptr row);
 
     /**
-     * Unmarks the given row as covered, restoring all related cells.
-     * @param row the row to uncover
+     * Unmarks the given row as removed, restoring all related cells.
+     * @param row the row to restore
      */
-    void uncoverRow(node_ptr row);
+    void restoreRow(node_ptr row);
 
     /**
      * Returns the number of rows in the given column.
@@ -187,8 +186,8 @@ public:
     }
 
 private:
-    int n_rows = 0;
     Node *pivot;
+    std::vector<Node *> row_heads;
     std::vector<Node *> col_heads;
     std::vector<int> col_sizes;
 };

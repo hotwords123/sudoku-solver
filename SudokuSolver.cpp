@@ -17,10 +17,10 @@ SudokuSolver::SudokuSolver(const Sudoku::Grid &grid) {
         int block = row / 3 * 3 + col / 3;
 
         auto add = [&](int value) {
-            auto head = dlx.addNode(nullptr, i);
-            dlx.addNode(head, 1 * 9 * 9 + row * 9 + value);
-            dlx.addNode(head, 2 * 9 * 9 + col * 9 + value);
-            dlx.addNode(head, 3 * 9 * 9 + block * 9 + value);
+            dlx.addNode(i, true);
+            dlx.addNode(1 * 9 * 9 + row * 9 + value);
+            dlx.addNode(2 * 9 * 9 + col * 9 + value);
+            dlx.addNode(3 * 9 * 9 + block * 9 + value);
             decisions.emplace_back(i, value + 1);
         };
 
@@ -143,19 +143,19 @@ bool SudokuSolver::reduceGroup() {
     std::vector<int> group; // the rows in the group
 
     std::vector<DancingLink::node_ptr> unused_rows;
-    bool ok = false; // whether at least one row is covered
+    bool ok = false; // whether at least one row is removed
 
     /**
-     * Covers all unused rows.
-     * Sets `ok` to true if at least one row is covered.
+     * Removes all unused rows.
+     * Sets `ok` to true if at least one row is removed.
      */
-    auto coverRows = [&]() {
+    auto removeRows = [&]() {
         if (unused_rows.empty()) return;
 
         for (auto row : unused_rows) {
             auto [pos, value] = decisions[row->rowIndex()];
             std::cout << " * cell " << formatCell(pos) << " is not " << value << "\n";
-            dlx.coverRow(row);
+            dlx.removeRow(row);
         }
 
         ok = true;
@@ -210,13 +210,13 @@ bool SudokuSolver::reduceGroup() {
                     for (auto row : dlx.rows(cells[index])) {
                         auto [pos, value] = decisions[row->rowIndex()];
                         if (!(set >> (value - 1) & 1u)) {
-                            // if the row is not in the group, we can cover it
+                            // if the row is not in the group, we can remove it
                             unused_rows.push_back(row);
                         }
                     }
                 }
             }
-            coverRows();
+            removeRows();
 
             // Reduction 2.
             // If a number appears only in a group of cells, then these cells
@@ -236,7 +236,7 @@ bool SudokuSolver::reduceGroup() {
                     std::cout << "\n";
 
                     // enumerate all columns
-                    // if a column contains all rows in the group, we can cover all other rows
+                    // if a column contains all rows in the group, we can remove all other rows
                     for (auto col : columns) {
                         auto rows = dlx.rows(col->columnIndex());
 
@@ -257,7 +257,7 @@ bool SudokuSolver::reduceGroup() {
                                 ++iter;
                             }
 
-                            coverRows();
+                            removeRows();
                         }();
                     }
                 }
