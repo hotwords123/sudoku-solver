@@ -27,6 +27,7 @@ pip install -r requirements.txt
    python scan.py
    ```
    The OCR program will process the image, recognize the numbers, and save the OCR result in a file named `sudoku.txt`.
+   Alternatively, you can put the puzzle directly into `sudoku.txt`. The file `sudoku-example.txt` shows what a typical puzzle would look like.
 
 3. Build the C++ Sudoku solver program using CMake.
    In the project directory, execute the following commands:
@@ -36,9 +37,10 @@ pip install -r requirements.txt
    ```
    This will generate the necessary build files and compile the C++ program.
 
-4. Run the Sudoku solver program by executing the generated executable. Use the following command:
+4. Run the Sudoku solver program by executing the generated executable. Use one of the following commands:
    ```sh
-   ./sudoku
+   ./sudoku 10  # find 10 solutions (same as `./sudoku`)
+   ./sudoku alt # find the solution step by step (might fail for some puzzles)
    ```
    The program will read the Sudoku puzzle from the `sudoku.txt` file, solve it, and display the solutions.
 
