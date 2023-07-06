@@ -178,14 +178,14 @@ bool SudokuSolver::reduceGroup() {
 
             // find all related cells and put them into the mask
             for (auto row : dlx.rows(iter->columnIndex())) {
-                for (auto cell : dlx.cells(row)) {
-                    int col_index = cell->columnIndex();
-                    if (col_index < 9 * 9) {
-                        masks[number] |= 1u << getIndex(col_index);
-                    }
-                }
+                auto [pos, value] = decisions[row->rowIndex()];
+                masks[number] |= 1u << getIndex(pos);
             }
         }
+
+        // Reduction 1.
+        // If a group of numbers appears only in a equal number of cells, then
+        // these cells cannot contain any other numbers.
 
         // enumerate all subsets of the constraint
         for (uint set = number_mask; set != 0; --set &= number_mask) {
@@ -204,10 +204,6 @@ bool SudokuSolver::reduceGroup() {
 
             std::cout << "reduceGroup: found a group of " << set_size << " cells\n";
 
-            // Reduction 1.
-            // If a group of numbers appears only in a equal number of cells, then
-            // these cells cannot contain any other numbers.
-
             unused_rows.clear();
             for (int index = 0; index < (int)cells.size(); index++) {
                 if (covered >> index & 1u) {
@@ -221,50 +217,47 @@ bool SudokuSolver::reduceGroup() {
                 }
             }
             removeRows();
+        }
 
-            // Reduction 2.
-            // If a number appears only in a group of cells, then these cells
-            // must contain the number.
+        // Reduction 2.
+        // If a number appears only in a group of cells, then these cells
+        // must contain the number.
 
-            for (int number = 0; number < 9; number++) {
-                if (set >> number & 1u) {
-                    std::cout << " - number " << (number + 1) << ":";
+        for (int number = 0; number < 9; number++) {
+            if (number_mask >> number & 1u) {
+                std::cout << " - number " << (number + 1) << ":";
 
-                    // find all rows that contain the number
-                    group.clear();
-                    for (auto row : dlx.rows(9 * i + number)) {
-                        auto [pos, value] = decisions[row->rowIndex()];
-                        std::cout << " " << formatCell(pos);
-                        group.push_back(row->rowIndex());
-                    }
-                    std::cout << "\n";
-
-                    // enumerate all columns
-                    // if a column contains all rows in the group, we can remove all other rows
-                    for (auto col : columns) {
-                        auto rows = dlx.rows(col->columnIndex());
-
-                        [&]() {
-                            unused_rows.clear();
-
-                            auto iter = rows.begin();
-                            for (int row_index : group) {
-                                while (iter != rows.end() && iter->rowIndex() < row_index) {
-                                    unused_rows.push_back(*iter);
-                                    ++iter;
-                                }
-                                if (iter == rows.end() || iter->rowIndex() != row_index) return;
-                                ++iter;
-                            }
-                            while (iter != rows.end()) {
-                                unused_rows.push_back(*iter);
-                                ++iter;
-                            }
-
-                            removeRows();
-                        }();
-                    }
+                // find all rows that contain the number
+                group.clear();
+                for (auto row : dlx.rows(9 * i + number)) {
+                    auto [pos, value] = decisions[row->rowIndex()];
+                    std::cout << " " << formatCell(pos);
+                    group.push_back(row->rowIndex());
                 }
+                std::cout << "\n";
+
+                // enumerate all columns
+                // if a column contains all rows in the group, we can remove all other rows
+                for (auto col : columns) [&]() {
+                    auto rows = dlx.rows(col->columnIndex());
+                    auto iter = rows.begin();
+
+                    unused_rows.clear();
+                    for (int row_index : group) {
+                        while (iter != rows.end() && iter->rowIndex() < row_index) {
+                            unused_rows.push_back(*iter);
+                            ++iter;
+                        }
+                        if (iter == rows.end() || iter->rowIndex() != row_index)
+                            return; // the column does not contain all rows in the group
+                        ++iter;
+                    }
+                    while (iter != rows.end()) {
+                        unused_rows.push_back(*iter);
+                        ++iter;
+                    }
+                    removeRows();
+                }();
             }
         }
     }
